@@ -1,0 +1,55 @@
+class EpochEndCallback(tf.keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        # 테스트셋에 대한 평가
+        test_loss, test_accuracy = self.model.evaluate(test_images, test_labels, verbose=0)
+        print(f"에포크 {epoch + 1} - 테스트 손실: {test_loss:.4f}, 테스트 정확도: {test_accuracy:.4f}")
+
+# 설명:
+# EpochEndCallback: 모델 학습 중 매 에포크가 끝날 때마다 실행되는 콜백 클래스
+# on_epoch_end(): 매 에포크의 끝에 테스트 데이터셋에 대해 모델을 평가하고 손실과 정확도를 출력
+# 이 함수는 학습 중 모델의 성능을 모니터링하는 데 유용
+
+# Classification 모델 정의 및 컴파일
+classification_model = Sequential([
+    base_model,                        # EfficientNetB0을 사용하여 기본 특징 추출
+    GlobalAveragePooling2D(),          # 특징 맵의 평균을 취해 고차원 정보를 간소화
+    Dense(512, activation='relu'),     # 512개의 유닛을 가진 완전 연결 레이어, 비선형성 추가
+    Dropout(0.5),                      # 50% 드롭아웃으로 과적합 방지
+    Dense(5, activation='softmax')     # 클래스 수가 5개인 출력 레이어, 각 클래스의 확률을 출력
+])
+
+classification_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+# 설명:
+# Classification 모델: EfficientNetB0을 기반으로 한 분류 모델을 정의
+# base_model: EfficientNetB0을 사용하여 이미지에서 기본 특징을 추출
+# GlobalAveragePooling2D(): 특징 맵의 평균값을 취해 고차원 정보를 간소화하고, 파라미터 수를 줄이며 과적합을 방지
+# Dense(512, activation='relu'): 512개의 유닛을 가진 완전 연결 레이어로, relu 활성화 함수를 사용하여 비선형성을 추가.
+# Dropout(0.5): 50%의 노드를 임의로 끄는 드롭아웃 레이어를 추가하여 과적합을 방지
+# Dense(5, activation='softmax'): 클래스 수가 5개인 출력 레이어로, softmax를 사용하여 각 클래스에 대한 확률을 출력
+# compile(): 모델을 컴파일
+# optimizer='adam': Adam 옵티마이저를 사용하여 학습을 진행
+# loss='sparse_categorical_crossentropy': 다중 클래스 분류 문제이기 때문에 sparse_categorical_crossentropy를 사용
+# 이 손실 함수는 라벨이 정수로 인코딩된 경우에 유용
+
+lr_scheduler = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, verbose=1)
+
+# 설명:
+# ReduceLROnPlateau 콜백: 학습 속도를 동적으로 조정하는 콜백
+# monitor='val_loss': 검증 손실을 모니터링
+# factor=0.5: 검증 손실이 개선되지 않을 경우 학습률을 절반으로 줄임
+# patience=5: 개선이 없을 때 5번의 에포크 동안 기다렸다가 학습률을 조정
+
+early_stopping = EarlyStopping(
+    monitor='val_loss',           # 검증 손실을 모니터링.
+    patience=10,                  # 10번의 에포크 동안 개선되지 않으면 학습을 중지
+    restore_best_weights=True,    # 가장 좋았던 가중치를 복원
+    verbose=1
+)
+
+# 설명:
+# EarlyStopping 콜백: 학습을 조기 종료하는 콜백
+# monitor='val_loss': 검증 손실을 모니터링
+# patience=10: 10번의 에포크 동안 개선이 없으면 학습을 중지하여 과적합을 방지
+# restore_best_weights=True: 학습 중 가장 좋았던 가중치를 복원
+# verbose=1: 조기 중지 시 메시지를 출력
