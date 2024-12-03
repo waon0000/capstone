@@ -55,6 +55,16 @@ def load_and_preprocess_image(filepath):
     image = cv2.resize(image, (224, 224))  # Resize to a fixed size
     image = preprocess_input(image)  # Preprocess input for EfficientNetB0
     return image
+# Prepare the data for training
+def prepare_data(df, dataset_path):
+    images = []
+    labels = []
+    for _, row in df.iterrows():
+        filepath = os.path.join(dataset_path, row['Category'], row['Filename'])
+        image = load_and_preprocess_image(filepath)
+        images.append(image)
+        labels.append(row['Encoded_Category'])
+    return np.array(images), np.array(labels)
 
 # Data augmentation using SimCLR augmentations
 datagen = ImageDataGenerator(
@@ -66,17 +76,6 @@ datagen = ImageDataGenerator(
     horizontal_flip=True,
     fill_mode='nearest'
 )
-
-# Prepare the data for training
-def prepare_data(df, dataset_path):
-    images = []
-    labels = []
-    for _, row in df.iterrows():
-        filepath = os.path.join(dataset_path, row['Category'], row['Filename'])
-        image = load_and_preprocess_image(filepath)
-        images.append(image)
-        labels.append(row['Encoded_Category'])
-    return np.array(images), np.array(labels)
 
 train_images, train_labels = prepare_data(train_df, dataset_path)
 test_images, test_labels = prepare_data(test_df, dataset_path)
