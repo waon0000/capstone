@@ -1,0 +1,30 @@
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import cv2
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report, confusion_matrix
+import tensorflow as tf
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D, Input, Flatten
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import EfficientNetB0
+from tensorflow.keras.applications.efficientnet import preprocess_input
+from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
+
+os, pandas, matplotlib, seaborn: 파일 경로 작업(os), 데이터프레임 관리(pandas), 시각화 도구(matplotlib, seaborn)로 데이터 분포 및 결과를 확인합니다.
+cv2 (OpenCV): 이미지를 로드하고 전처리하는 데 사용됩니다. Grayscale로 로드한 후 RGB로 변환하는 등의 이미지 처리를 위해 사용됩니다.
+numpy: 배열 형태로 데이터를 다루기 위해 사용합니다.
+sklearn: train_test_split은 데이터를 훈련/테스트로 나누기 위해, LabelEncoder는 범주형 데이터를 정수로 인코딩하기 위해, classification_report와 confusion_matrix는 모델 평가를 위해 사용됩니다.
+tensorflow, keras: 모델 구조 정의(Sequential, Model), 레이어 추가, 전이 학습(Transfer Learning) 등을 위한 필수 딥러닝 라이브러리입니다.
+ImageDataGenerator: 이미지 증강을 위한 도구로, 데이터의 다양성을 높여 모델의 일반화 성능을 향상시키는 데 사용됩니다.
+EfficientNetB0, preprocess_input: EfficientNetB0을 통해 이미지를 피처 추출하고 사전 처리를 수행합니다.
+
+
+
+
+
+
