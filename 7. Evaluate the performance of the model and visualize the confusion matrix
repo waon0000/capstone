@@ -1,0 +1,63 @@
+# Classification 모델의 훈련 및 평가
+history = classification_model.fit(
+    train_images_augmented, 
+    train_labels_augmented, 
+    epochs=30, 
+    validation_data=(test_images, test_labels), 
+    callbacks=[lr_scheduler, EpochEndCallback()]
+)
+
+# 설명:
+# classification_model.fit(): Classification 모델을 학습하는 함수
+# train_images_augmented, train_labels_augmented: 증강된 학습 데이터와 라벨을 사용
+# epochs=30: 총 30번의 에포크 동안 학습을 진행
+# validation_data=(test_images, test_labels): 테스트 이미지를 검증 데이터로 사용하여 학습 중 성능을 평가
+# callbacks=[lr_scheduler, EpochEndCallback()]: 학습률을 동적으로 조정하고, 매 에포크가 끝날 때마다 성능을 평가하는 콜백을 추가
+
+test_loss, test_acc = classification_model.evaluate(test_images, test_labels, verbose=2)
+print(f'Test accuracy: {test_acc}')
+
+# 설명:
+# classification_model.evaluate(): 테스트 데이터에 대해 모델의 성능을 평가
+# test_images, test_labels: 평가에 사용되는 테스트 데이터와 라벨
+# verbose=2: 평가 중 출력의 상세도를 설정하며, 테스트 데이터에 대한 최종 손실과 정확도를 출력
+
+# Generate predictions and plot confusion matrix
+predictions = classification_model.predict(test_images)
+predicted_classes = np.argmax(predictions, axis=1)
+print(classification_report(test_labels, predicted_classes, target_names=label_encoder.classes_))
+
+# 설명:
+# classification_model.predict(): 테스트 데이터에 대해 예측을 수행
+# np.argmax(predictions, axis=1): 예측된 클래스의 인덱스를 반환하여 각 샘플에 대해 가장 높은 확률을 가진 클래스를 찾음
+# classification_report(): 각 클래스에 대해 정밀도(Precision), 재현율(Recall), F1 점수를 계산하여 출력
+
+# Plot confusion matrix
+def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion Matrix', cmap=plt.cm.Blues):
+    plt.figure(figsize=(10, 7))
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], '.2f' if normalize else 'd'), horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.show()
+
+cm = confusion_matrix(test_labels, predicted_classes)
+plot_confusion_matrix(cm, classes=label_encoder.classes_)
+
+# 설명:
+# confusion_matrix(): 실제 라벨과 예측된 라벨을 비교하여 혼동 행렬을 생성
+# plot_confusion_matrix(): 생성된 혼동 행렬을 시각화하는 함수
+# normalize=False: 혼동 행렬의 값을 정규화할지 여부를 결정
+# plt.imshow(): 혼동 행렬을 이미지로 시각화
+# 각 셀에 예측된 값 또는 비율을 텍스트로 표시하여 모델의 성능을 시각적으로 이해하는 데 도움을 줌
