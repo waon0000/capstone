@@ -55,6 +55,7 @@ def load_and_preprocess_image(filepath):
     image = cv2.resize(image, (224, 224))  # Resize to a fixed size
     image = preprocess_input(image)  # Preprocess input for EfficientNetB0
     return image
+    
 # Prepare the data for training
 def prepare_data(df, dataset_path):
     images = []
