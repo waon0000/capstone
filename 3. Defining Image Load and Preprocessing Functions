@@ -1,0 +1,31 @@
+5. 이미지 로드 및 전처리 함수 정의
+def load_and_preprocess_image(filepath):
+    image = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
+    image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    image = cv2.resize(image, (224, 224))
+    image = preprocess_input(image)
+    return image
+
+cv2.imread()**로 이미지를 Grayscale로 로드하여 메모리 사용량을 줄임
+cv2.cvtColor()**로 이미지를 RGB로 변환합니다. EfficientNet은 RGB 이미지를 입력으로 받기 때문에 변환이 필요
+cv2.resize()**를 통해 이미지를 모델이 기대하는 입력 크기인 (224, 224)로 변경
+preprocess_input()**을 통해 사전 학습된 EfficientNet 모델에 맞는 전처리를 수행
+
+
+6. 데이터 준비
+def prepare_data(df, dataset_path):
+    images = []
+    labels = []
+    for _, row in df.iterrows():
+        filepath = os.path.join(dataset_path, row['Category'], row['Filename'])
+        image = load_and_preprocess_image(filepath)
+        images.append(image)
+        labels.append(row['Encoded_Category'])
+    return np.array(images), np.array(labels)
+
+train_images, train_labels = prepare_data(train_df, dataset_path)
+test_images, test_labels = prepare_data(test_df, dataset_path)
+
+prepare_data() 함수는 모든 이미지를 로드하고 전처리한 후, numpy 배열로 변환하여 훈련 및 테스트 데이터로 준비합니다.
+이후 딥러닝 모델에 입력될 수 있도록 이미지와 레이블을 각각 배열로 반환합니다.
+
