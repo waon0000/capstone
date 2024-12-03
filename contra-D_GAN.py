@@ -67,6 +67,9 @@ def prepare_data(df, dataset_path):
         labels.append(row['Encoded_Category'])
     return np.array(images), np.array(labels)
 
+train_images, train_labels = prepare_data(train_df, dataset_path)
+test_images, test_labels = prepare_data(test_df, dataset_path)
+
 # Data augmentation using SimCLR augmentations
 datagen = ImageDataGenerator(
     rotation_range=30,
@@ -77,9 +80,6 @@ datagen = ImageDataGenerator(
     horizontal_flip=True,
     fill_mode='nearest'
 )
-
-train_images, train_labels = prepare_data(train_df, dataset_path)
-test_images, test_labels = prepare_data(test_df, dataset_path)
 
 # Augment the training data
 train_augmented_flow = datagen.flow(train_images, train_labels, batch_size=len(train_images), shuffle=False)
