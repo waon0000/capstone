@@ -1,0 +1,35 @@
+2.데이터 준비 
+dataset_path = r'D:/Deep_learning/image/Training'
+categories = ['0Normal', '1Doubtful', '2Mild', '3Moderate', '4Severe']
+data = []
+
+for category in categories:
+    category_path = os.path.join(dataset_path, category)
+    for filename in os.listdir(category_path):
+        data.append((category, filename))
+
+df = pd.DataFrame(data, columns=['Category', 'Filename'])
+
+데이터 경로 설정: dataset_path를 통해 데이터셋의 위치를 정의
+카테고리 정의: 각 클래스의 이름을 categories 리스트에 정의
+데이터 수집: os.listdir()를 사용해 각 카테고리 폴더에서 파일명을 읽어와 (카테고리, 파일명) 형태로 저장
+데이터프레임 생성: pandas 데이터프레임으로 모든 이미지의 카테고리와 파일명을 정리합니다. 이는 이후 데이터 전처리와 훈련에 활용
+
+  
+3. 데이터 전처리 및 훈련/테스트 분할
+label_encoder = LabelEncoder()
+df['Encoded_Category'] = label_encoder.fit_transform(df['Category'])
+train_df, test_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df['Encoded_Category'])
+
+레이블 인코딩: LabelEncoder를 사용해 카테고리를 정수로 인코딩하여 머신러닝 모델에서 쉽게 처리
+데이터 분할: train_test_split()를 사용해 데이터를 훈련과 테스트로 나눔 
+stratify를 사용해 각 클래스가 훈련 및 테스트 데이터에 고르게 분포되도록 함
+
+4.데이터 분포 시각화
+plt.figure(figsize=(10, 6))
+sns.countplot(data=df, x='Category')
+plt.title('Distribution of Knee Arthritis Categories')
+plt.show()
+  
+데이터 시각화: 카테고리별로 데이터 분포를 countplot을 통해 시각화 
+데이터 불균형을 파악하기 위한 중요한 과정
