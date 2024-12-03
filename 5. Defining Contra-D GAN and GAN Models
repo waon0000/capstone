@@ -1,0 +1,154 @@
+# Contrastive Learning and GAN Integration Module
+class ContrastiveGAN(Model):
+    def __init__(self, feature_extractor):
+        super(ContrastiveGAN, self).__init__()
+        self.feature_extractor = feature_extractor
+        self.flatten = Flatten()
+        self.projection_head = Dense(128, activation='relu', name='projection_head')
+
+    def call(self, inputs):
+        features = self.feature_extractor(inputs)
+        flattened_features = self.flatten(features)
+        projection = self.projection_head(flattened_features)
+        return projection
+
+# 설명:
+# ContrastiveGAN은 EfficientNetB0에서 추출한 이미지 특징을 기반으로 Contrastive Learning을 수행하기 위한 모듈
+# Contrastive Learning은 서로 비슷한 이미지를 가까운 벡터 공간에, 서로 다른 이미지를 멀리 두는 방식으로 학습하는 방법
+# feature_extractor는 EfficientNetB0으로부터 추출한 특징을 의미하며, 이를 통해 각 이미지의 고수준 특징을 추출
+
+# Projection Head
+# Flatten()으로 특징 맵을 평탄화한 뒤, projection_head로 128차원의 벡터로 변환
+# Projection Head는 Contrastive Learning에서 특징 간 거리를 효과적으로 계산하기 위한 차원 축소 작업을 수행
+# 특성을 벡터 공간에서 비교 가능하게 하며, 유사한 이미지들끼리 가까워지도록 학습을 촉진
+
+# Instantiate ContrastiveGAN model and assign optimizer
+contrastive_gan = ContrastiveGAN(base_model)
+contrastive_gan.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
+
+# Verify that the 'projection_head' layer is trainable
+print("Is projection_head trainable?", contrastive_gan.projection_head.trainable)
+
+# 설명:
+# ContrastiveGAN 모델을 인스턴스화하고, Adam 옵티마이저를 사용하여 모델을 컴파일
+# projection_head 레이어가 학습 가능한지 확인하여 모델 학습이 정상적으로 설정되었는지 검증
+
+
+# Generator model
+generator_input = Input(shape=(100,))
+x = Dense(14 * 14 * 256, activation='relu')(generator_input)
+x = tf.reshape(x, (-1, 14, 14, 256))
+x = tf.keras.layers.Conv2DTranspose(128, (5, 5), strides=(2, 2), padding='same', activation='relu')(x)
+x = tf.keras.layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', activation='relu')(x)
+x = tf.keras.layers.Conv2DTranspose(32, (5, 5), strides=(2, 2), padding='same', activation='relu')(x)
+generated_image = tf.keras.layers.Conv2DTranspose(3, (5, 5), strides=(1, 1), padding='same', activation='tanh')(x)
+generated_image = tf.image.resize(generated_image, [224, 224])
+generator_model = Model(inputs=generator_input, outputs=generated_image)
+
+# 설명:
+# Generator 모델은 임의의 노이즈 벡터(여기서는 100차원)를 입력으로 받아 이미지를 생성.
+# Dense() 레이어로 먼저 14x14x256 형태의 텐서를 만들고, 이후 Conv2DTranspose를 사용하여 해상도를 점진적으로 높임
+# 이 방법을 통해 노이즈 벡터에서 고해상도 이미지를 생성
+# 최종적으로 Conv2DTranspose 레이어를 통해 (224, 224, 3) 크기의 이미지를 생성하며, 마지막 활성화 함수로 tanh를 사용하여 픽셀 값을 -1에서 1 사이로 제한
+
+
+# Discriminator model
+input_image = Input(shape=(224, 224, 3))
+x = EfficientNetB0(weights='imagenet', include_top=False, input_shape=(224, 224, 3))(input_image)
+x = GlobalAveragePooling2D()(x)
+x = Dense(1, activation='sigmoid')(x)
+discriminator_model = Model(inputs=input_image, outputs=x)
+discriminator_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# 설명:
+# Discriminator는 입력된 이미지가 실제인지(Ground truth) 혹은 Generator가 생성한 가짜 이미지인지 판별
+# EfficientNetB0를 사용해 이미지에서 특징을 추출하고, GlobalAveragePooling2D()로 해당 특징을 압축
+# 마지막에 Sigmoid 활성화 함수를 가진 Dense 레이어를 사용하여 이미지가 진짜일 확률을 출력
+# binary_crossentropy 손실 함수를 사용하여 모델이 실제와 가짜 이미지를 정확히 구분하도록 학습
+
+
+# GAN model combining generator and discriminator
+discriminator_model.trainable = False
+gan_input = Input(shape=(100,))
+generated_image = generator_model(gan_input)
+validity = discriminator_model(generated_image)
+gan_model = Model(inputs=gan_input, outputs=validity)
+gan_model.compile(optimizer='adam', loss='binary_crossentropy')
+
+# 설명:
+# GAN 모델은 Generator와 Discriminator를 결합한 모델
+# discriminator_model.trainable = False로 설정하여 GAN 모델을 학습할 때 Discriminator의 가중치는 업데이트되지 않도록 함
+# Generator가 생성한 이미지를 Discriminator가 판별하도록 하여, Generator가 점점 더 진짜 같은 이미지를 생성할 수 있도록 학습을 촉진
+
+
+# Define the contrastive loss function
+@tf.function
+def contrastive_loss(y_true, y_pred, margin=1):
+    anchor, positive, negative = tf.unstack(y_pred, axis=1)
+    positive_distance = tf.reduce_sum(tf.square(anchor - positive), axis=-1)
+    negative_distance = tf.reduce_sum(tf.square(anchor - negative), axis=-1)
+    loss = tf.maximum(0.0, positive_distance - negative_distance + margin)
+    return tf.reduce_mean(loss) + 0.1 * (tf.reduce_mean(positive_distance) + tf.reduce_mean(negative_distance))
+
+# 설명:
+# Contrastive Learning은 주어진 앵커(anchor) 이미지와 긍정(positive) 이미지 간의 거리는 줄이고, 앵커와 부정(negative) 이미지 간의 거리는 멀어지도록 하는 학습 방식
+# margin은 앵커와 부정 샘플 사이의 최소 거리를 의미하며, 손실 함수는 이 거리를 기반으로 학습
+# 이를 통해 이미지 간의 거리를 조절하여 유사한 이미지들은 가까워지고, 그렇지 않은 이미지들은 멀어지도록 학습
+
+
+# Training loop with GradientTape and explicit weight updates
+batch_size = 32
+epochs = 100
+initial_weights = contrastive_gan.projection_head.get_weights()
+
+for epoch in range(epochs):
+    # Train discriminator with real and fake data
+    idx = np.random.randint(0, train_images.shape[0], batch_size)
+    real_images = train_images[idx]
+    noise = np.random.normal(0, 1, (batch_size, 100))
+    fake_images = generator_model.predict(noise)
+
+    real_labels = np.ones((batch_size, 1))
+    fake_labels = np.zeros((batch_size, 1))
+
+    d_loss_real = discriminator_model.train_on_batch(real_images, real_labels)
+    d_loss_fake = discriminator_model.train_on_batch(fake_images, fake_labels)
+    d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
+
+    # Train generator via GAN
+    noise = np.random.normal(0, 1, (batch_size, 100))
+    valid_y = np.ones((batch_size, 1))
+    g_loss = gan_model.train_on_batch(noise, valid_y)
+
+    # Train contrastive model with triplet samples
+    with tf.GradientTape() as tape:
+        anchor_images = train_images[np.random.randint(0, train_images.shape[0], batch_size)]
+        positive_images = train_images[np.random.randint(0, train_images.shape[0], batch_size)]
+        negative_images = train_images[np.random.randint(0, train_images.shape[0], batch_size)]
+
+        # Forward pass and get projections
+        anchor_proj = contrastive_gan(anchor_images)
+        positive_proj = contrastive_gan(positive_images)
+        negative_proj = contrastive_gan(negative_images)
+
+        stacked_projections = tf.stack([anchor_proj, positive_proj, negative_proj], axis=1)
+
+        # Calculate contrastive loss
+        loss = contrastive_loss(None, stacked_projections)
+
+    # Compute gradients and apply them
+    grads = tape.gradient(loss, contrastive_gan.trainable_variables)
+    contrastive_gan.optimizer.apply_gradients(zip(grads, contrastive_gan.trainable_variables))
+
+    # Check projection_head weights update
+    current_weights = contrastive_gan.projection_head.get_weights()
+    if np.array_equal(initial_weights, current_weights):
+        print("Warning: projection_head weights have not changed.")
+    else:
+        print("projection_head weights updated.")
+    initial_weights = current_weights
+
+# 설명:
+# Discriminator 학습: 실제(real) 이미지와 생성된(fake) 이미지를 사용하여 Discriminator를 학습
+# Generator 학습: Discriminator가 가짜 이미지를 진짜로 판별하도록 학습하여 Generator의 성능을 향상
+# Contrastive Learning: 앵커, 긍정, 부정 이미지로부터 특징을 추출하고, 손실을 계산하여 Contrastive Learning을 통한 학습을 수행
