@@ -13,11 +13,7 @@ from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D, Inpu
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.applications import EfficientNetB0
 from tensorflow.keras.applications.efficientnet import preprocess_input
-from tensorflow.keras.callbacks import ReduceLROnPlateau
-import itertools
-import tensorflow.keras.backend as K
-from tensorflow.keras.callbacks import EarlyStopping
-
+from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
 
 # Define the dataset path
 dataset_path = r'D:/Deep_learning/image/Training'
